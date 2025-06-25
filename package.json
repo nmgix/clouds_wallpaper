@@ -24,6 +24,7 @@
   ],
   "author": "nmgix",
   "dependencies": {
-    "sass": "^1.89.2"
+    "sass": "^1.89.2",
+    "uuid": "^11.1.0"
   }
 }
