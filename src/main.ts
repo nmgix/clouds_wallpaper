@@ -4,21 +4,10 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+const MAX_CLOUDS = 30
+
 const abortController = new AbortController();
-
-function getRandomFactor() {
-  return 0.8 + ((Math.random() * 0.4 * 10) | 0) / 10;
-}
-
-type Cloud = {
-  id: string;
-  size: { w: number; h: number };
-  vec: { x: number; y: number };
-  pos: { x: number; y: number };
-  zIndex: number;
-};
-
-type Wind = { vec: { x: number; y: number }; speed: number };
+let debug: boolean = true
 
 let currentClouds: Cloud[] = [];
 const wind = new Proxy({ vec: { x: 0, y: 0 }, speed: 0 } as Wind, {
@@ -26,25 +15,31 @@ const wind = new Proxy({ vec: { x: 0, y: 0 }, speed: 0 } as Wind, {
     // console.log(target.vec);
     if (prop in target) target[prop as keyof typeof target] = val;
     target.speed = normalize(target.vec).speed;
+    for(let cloud of currentClouds) {
+      // console.log('calc')
+      const ratio = cloud.size.w/cloud.size.h
+      cloud.vec.x = wind.vec.x * wind.speed * getRandomFactor() * ratio*0.5; //дорого слишком
+    // для cloud.vec.y пока не надо
+    }
     return true;
   }
 });
 
-function normalize(vec: { x: number; y: number }) {
-  let len = Math.hypot(vec.x, vec.y);
-  len = ((len * 10) | 0) / 10;
-  return len > 0 ? { speed: len, vec: { x: vec.x / len, y: vec.y / len } } : { speed: 0, vec: { x: 0, y: 0 } };
-}
 
 import { v4 as uuidv4 } from "uuid";
+import { getRandomFactor, normalize, toFixed1 } from "./funcs";
+import { Cloud, Wind } from "./types";
 function generateCloud(wind: Wind): Cloud {
   // пока что y 0, мне не нужно рандомную скорость по высоте
 
-  const randomWidth = 100;
-  const randomHeight = 50;
+  // const randomWidth = 100;
+  // const randomHeight = 50;
+  const randomWidth = Math.min(Math.max(Math.random()*300, 50), 300);
+  const randomHeight = Math.min(Math.max(Math.random()*150, 50), 200);
 
-  // const cloudX = 0-randomWidth
-  const cloudX = 0;
+
+  const cloudX = 0-randomWidth*2
+  // const cloudX = 0;
   const cloudY = 100 + (canvas.height - 400) * Math.random();
 
   const zInd = Math.random() * 10;
@@ -52,9 +47,9 @@ function generateCloud(wind: Wind): Cloud {
   return {
     id: uuidv4(),
     vec: { x: wind.vec.x * wind.speed * getRandomFactor(), y: 0 },
-    pos: { x: cloudX, y: ((cloudY * 10) | 0) / 10 },
+    pos: { x: cloudX, y: toFixed1(cloudY) },
     size: { w: randomWidth, h: randomHeight },
-    zIndex: ((zInd * 10) | 0) / 10 //битовое отделение дробной части, аналог toFixed(1) после запятой, типо 0.1 вместо 0.15345334
+    zIndex: toFixed1(zInd) //битовое отделение дробной части, аналог toFixed(1) после запятой, типо 0.1 вместо 0.15345334
   };
 }
 
@@ -75,18 +70,23 @@ function renderLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.strokeStyle = "red";
-
-  console.log(currentClouds.length);
+  
+  // console.log(currentClouds.length);
   for (let cloud of currentClouds) {
-    // cloud.vec.x = wind.vec.x * wind.speed * getRandomFactor(); дорого слишком
-    // для cloud.vec.y пока не надо
-
+    
     cloud.pos.x += cloud.vec.x;
     cloud.pos.y += cloud.vec.y;
-
-    console.log({ pos: cloud.pos });
-    console.log({ vec: cloud.vec });
-
+    
+    // console.log({ pos: cloud.pos });
+    // console.log({ vec: cloud.vec });
+    
+    const vals = [`id: ${cloud.id.slice(0, 8)}`, `pos: ${JSON.stringify(cloud.pos)}`, `vec: ${JSON.stringify(cloud.vec)}`, `size: ${JSON.stringify(cloud.size)}`, `zIdx: ${JSON.stringify(cloud.zIndex)}`]
+    let y = 7, step = 7
+    for(let str of vals) {
+      ctx.fillText(str, cloud.pos.x, cloud.pos.y+y, cloud.size.w)
+      y+=step
+    }
+    
     ctx.strokeRect(cloud.pos.x, cloud.pos.y, cloud.size.w, cloud.size.h);
     // console.log(cloud);
   }
@@ -97,19 +97,28 @@ function renderLoop() {
 }
 
 // console.log(currentClouds);
-currentClouds = addClouds(5, currentClouds, wind);
+currentClouds = addClouds(10, currentClouds, wind);
 
-wind.vec = { x: 1.2, y: 0 };
+wind.vec = { x: 2, y: 0 };
 console.log(wind);
 
 renderLoop();
-setInterval(() => {
-  // clouds.push(spawnCloud());
-  currentClouds = currentClouds.filter(cloud => cloud.pos.x + cloud.size.w < canvas.width);
-});
-setTimeout(() => {
-  abortController.abort("enough");
-}, 50);
+// setInterval(() => {
+//   // clouds.push(spawnCloud());
+//   const newClouds = currentClouds.filter(cloud => cloud.pos.x < canvas.width + cloud.size.w);
+//   const randomCloudsAmount = Math.max(Math.min(currentClouds.length-newClouds.length+Math.ceil(Math.random()*4), 0), MAX_CLOUDS)
+//   if(newClouds.length < currentClouds.length) addClouds(randomCloudsAmount, newClouds, wind)
+//   currentClouds = newClouds
+// console.log(currentClouds)
+// });
+// не работает
+
+
+
+
+// setTimeout(() => {
+//   abortController.abort("enough");
+// }, 10000);
 
 // setInterval(() => {
 //   wind.x = ...; // новый вектор
