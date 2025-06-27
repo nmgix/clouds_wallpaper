@@ -2,7 +2,7 @@ import { wind } from "./objects/wind";
 
 // dev settings
 const abortController = new AbortController();
-export let debugState = new Proxy({ active: true }, {
+export let debugState = new Proxy({ active: false }, {
   get(target, prop) {
     const val = target[prop as keyof typeof target]
       if(prop == 'active') windspeed_controller.style.display = val?'flex':'none'
@@ -30,7 +30,7 @@ if(debugState.active==true && !!windspeed_controller) {
 }
 
 // render loop
-import { addClouds, cloudsState, renderClouds } from "./objects/clouds";
+import { addClouds, cacheClouds, cloudsState, renderClouds } from "./objects/clouds";
 // import { renderCursor } from "./objects/cursor";
 function renderLoop() {
   if (!canvas) throw new Error("Canvas not found");
@@ -48,10 +48,13 @@ function renderLoop() {
 
 // actual scene setup
 import { MAX_CLOUDS } from "./helper/consts";
-cloudsState.currentClouds = addClouds(10, wind);
-wind.vec = { x: 2, y: 0 };
-renderLoop();
-setInterval(() => {
+(async() => {
+  cacheClouds()
+  cloudsState.currentClouds =await addClouds(10, wind);
+  wind.vec = { x: 2, y: 0 };
+  renderLoop();
+})()
+setInterval(async () => {
   let newClouds = cloudsState.currentClouds.filter(cloud => cloud.pos.x < canvas.width + cloud.size.w); //  не здесь проверять а в самом облаке в цикле рендера я думаю
   if(newClouds.length < cloudsState.currentClouds.length) {
     const randomCloudsAmount = Math.min(Math.max(cloudsState.currentClouds.length-newClouds.length+Math.ceil(Math.random()*MAX_CLOUDS), 1), MAX_CLOUDS)
@@ -59,11 +62,12 @@ setInterval(() => {
     if(newClouds.length == 0 && limitedAmount == 0) limitedAmount = 5
     // console.log(MAX_CLOUDS - randomCloudsAmount - newClouds.length)
     // console.log('prevNewClouds:'+newClouds.length)
-    newClouds = newClouds.concat(addClouds(limitedAmount, wind))
+    newClouds = newClouds.concat(await addClouds(limitedAmount, wind))
     // console.log('newClouds:'+newClouds.length)
   }
   cloudsState.currentClouds = newClouds
 });
+// abortController.abort("enough")
 // setTimeout(() => {
 //   abortController.abort("enough");
 // }, 10000);

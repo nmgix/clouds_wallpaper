@@ -10,3 +10,17 @@ export function getRandomFactor() {
 
 //битовое отделение дробной части, аналог toFixed(1) после запятой, типо 0.1 вместо 0.15345334
 export function toFixed1(num: number) { return ((num * 10) | 0) / 10 } 
+
+export function memoize<T extends (...args: any[]) => any>(fn: T): T {
+  const cache = new Map<string, ReturnType<T>>();
+
+  return function (...args: Parameters<T>): ReturnType<T> {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) {
+      return cache.get(key)!;
+    }
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  } as T;
+}
