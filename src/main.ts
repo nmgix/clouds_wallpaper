@@ -2,9 +2,14 @@ import { wind } from "./objects/wind";
 
 // dev settings
 const abortController = new AbortController();
-export let debugState = new Proxy({ active: false }, {
+export let debugState = new Proxy({ active: true }, {
+  get(target, prop) {
+    const val = target[prop as keyof typeof target]
+      if(prop == 'active') windspeed_controller.style.display = val?'flex':'none'
+      return val
+  },
   set(target, prop, value) {
-      if(prop == 'active') windspeed_controller.style.display = value?'block':'none'
+      if(prop == 'active') windspeed_controller.style.display = value?'flex':'none'
       target[prop as keyof typeof target] = value
       return true
   },

@@ -2,7 +2,7 @@ import { canvas } from "../main";
 
 export const cursorState = new Proxy({ x:0, y: 0 }, {
     set(target, prop, value, ) {
-        console.log({...target})
+        // console.log({...target})
         target[prop as keyof typeof target]=value
         return true
     },

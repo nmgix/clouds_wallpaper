@@ -10,9 +10,16 @@ type CloudsState = {
     currentClouds: Cloud[]
 }
 
-export const cloudsState: CloudsState = {
+export const cloudsState: CloudsState = new Proxy({
     currentClouds: []
-}
+}, {
+  set(target, prop, value) {
+      target.currentClouds
+      if(prop == 'currentClouds') value = (value as CloudsState['currentClouds']).sort((c1, c2) => c1.zIndex - c2.zIndex)
+      target[prop as keyof typeof target] = value
+      return true
+  },
+})
 
 import { v4 as uuidv4 } from "uuid";
 import { getRandomFactor, toFixed1 } from "../helper/funcs";
@@ -54,7 +61,7 @@ export function renderClouds(ctx: CanvasRenderingContext2D) {
       if(intersectionX&&intersectionY) ctx.fillStyle = "gray";
 
       ctx.fillRect(cloud.pos.x, cloud.pos.y, cloud.size.w, cloud.size.h);
-      
+
       if(intersectionX&&intersectionY) ctx.fillStyle = "white";
 
     if(debugState.active == true) {
