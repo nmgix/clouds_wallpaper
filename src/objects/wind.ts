@@ -1,5 +1,5 @@
 import { getRandomFactor, normalize } from "../helper/funcs";
-import { windspeed_controller } from "../main";
+import { debugState, windspeed_controller } from "../main";
 import { cloudsState } from "./clouds";
 
 export type Wind = { vec: { x: number; y: number }; speed: number };
@@ -20,9 +20,8 @@ export const wind = new Proxy({ vec: { x: 0, y: 0 }, speed: 0 } as Wind, {
         cloud.vec.x = wind.vec.x  * getRandomFactor() * ratio*0.5;
         cloud.vec.y = wind.vec.y  * getRandomFactor() * ratio*0.5;
       }
-      console.log(target)
-
+      if(debugState.active) console.log(target)
       return true;
-    }else return false
+    } else return false
   }
 });

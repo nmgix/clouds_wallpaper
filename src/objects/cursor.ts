@@ -1,9 +1,9 @@
 import { canvas } from "../main";
 
-export const cursorState = new Proxy({ x:0, y: 0 }, {
-    set(target, prop, value, ) {
-        // console.log({...target})
-        target[prop as keyof typeof target]=value
+export const cursorState = new Proxy({ x:0, y: 0, active: false }, {
+    set(target, prop, value) {
+        target[prop as keyof typeof target]=value as never
+        if(prop =='active') document.body.style.cursor = value === true ? "pointer" : 'auto'; 
         return true
     },
 })

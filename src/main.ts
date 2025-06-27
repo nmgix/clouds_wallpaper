@@ -21,6 +21,15 @@ if (!canvas) throw new Error("Canvas not found");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+const ro = new ResizeObserver(entries => {
+  for (let entry of entries) {
+    const cr = entry.contentRect;
+    canvas.width = cr.width;
+    canvas.height = cr.height;
+  }
+});
+ro.observe(document.querySelector('canvas')!);
+
 export const windspeed_controller = document.querySelector('.wind-speed_wrapper') as HTMLInputElement
 if(debugState.active==true && !!windspeed_controller) {
   windspeed_controller.addEventListener('input', (ev) => {
@@ -50,7 +59,7 @@ function renderLoop() {
 import { MAX_CLOUDS } from "./helper/consts";
 (async() => {
   cacheClouds()
-  cloudsState.currentClouds =await addClouds(10, wind);
+  cloudsState.currentClouds =await addClouds(20, wind, true);
   wind.vec = { x: 2, y: 0 };
   renderLoop();
 })()
@@ -62,7 +71,7 @@ setInterval(async () => {
     if(newClouds.length == 0 && limitedAmount == 0) limitedAmount = 5
     // console.log(MAX_CLOUDS - randomCloudsAmount - newClouds.length)
     // console.log('prevNewClouds:'+newClouds.length)
-    newClouds = newClouds.concat(await addClouds(limitedAmount, wind))
+    newClouds = newClouds.concat(await addClouds(limitedAmount, wind, false))
     // console.log('newClouds:'+newClouds.length)
   }
   cloudsState.currentClouds = newClouds
