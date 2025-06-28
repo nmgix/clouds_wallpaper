@@ -5,7 +5,7 @@ const abortController = new AbortController();
 export let debugState = new Proxy({ active: false }, {
   get(target, prop) {
     const val = target[prop as keyof typeof target]
-      if(prop == 'active') windspeed_controller.style.display = val?'flex':'none'
+      if(prop == 'active') windspeed_controller.style.display = val?'flex':'none' // хз зачем каждый раз при каждом get. просто get на самом деле очень часто юзается
       return val
   },
   set(target, prop, value) {
@@ -29,9 +29,11 @@ const ro = new ResizeObserver(entries => {
   }
 });
 ro.observe(document.querySelector('canvas')!);
+document.querySelectorAll('.props').forEach(el => (el as HTMLElement).classList.remove('props'))
 
 export const windspeed_controller = document.querySelector('.wind-speed_wrapper') as HTMLInputElement
 if(debugState.active==true && !!windspeed_controller) {
+  windspeed_controller.style.display = 'flex'
   windspeed_controller.addEventListener('input', (ev) => {
     console.log((ev.target as HTMLInputElement).value)
     wind.vec = { ...wind.vec, x: Number((ev.target as HTMLInputElement).value)/10 }

@@ -26,8 +26,8 @@ import { v4 as uuidv4 } from "uuid";
 import { CLOUDS_NAMES, CLOUDS_PATH } from "../helper/consts";
 import { getRandomFactor, memoize, toFixed1 } from "../helper/funcs";
 import { canvas, debugState } from "../main";
-import { cursorState } from "./cursor";
-import { Wind } from "./wind";
+import { cursorIntersects as cursorIntersectsCheck, CursorState, cursorState } from "./cursor";
+import { assignWindToCloud, Wind } from "./wind";
 export async function generateCloud(wind: Wind, generateAtScreen = false): Promise<Cloud> {
   
   // https://stackoverflow.com/a/23976260/14889638
@@ -100,44 +100,68 @@ export const memoizeLoadImage = memoize(loadImage)
 //   }
 // })
 let intersectsWith:Map<string, number> = new Map()
-let cursorIntersects = false
+let hoverOver: CursorState['hoverOver'] = null
 
+// гоняется в 60+фпс, частоте экрана
 export async function renderClouds(ctx: CanvasRenderingContext2D) {
   // ctx.fillStyle = "white";
   
-  cursorIntersects=false
+  if(hoverOver!==null) hoverOver=null // мне кажется в 60+фпс эта проверка немного грузит излишне
 
   for(let cloud of cloudsState.currentClouds) {
-      const { x, y } = cursorState
-      const intersectionX = x>=cloud.pos.x && x<=cloud.pos.x+cloud.size.w
-      const intersectionY = y>=cloud.pos.y && y<=cloud.pos.y+cloud.size.h
+      const { intersectionX, intersectionY } = cursorIntersectsCheck({ ...cursorState }, { ...cloud.pos, ...cloud.size })
       if(intersectionX&&intersectionY) {
         // intersectsWith.push(cloud.id)
         if(!intersectsWith.has(cloud.id)) {
           intersectsWith.set(cloud.id, cloud.zIndex)
           intersectsWith = new Map([...intersectsWith.entries()].sort(([, v1], [, v2]) => v2 - v1));
         }
-        cursorIntersects=true
+        hoverOver=cloud.id // мне кажется в 60+фпс эта проверка немного грузит излишне
       } else {
         if(intersectsWith.has(cloud.id)) intersectsWith.delete(cloud.id)
       }
   }
-  cursorState.active = cursorIntersects
+  if(cursorState.hoverOver !== hoverOver) cursorState.hoverOver = hoverOver
 
 
-  for (let cloud of cloudsState.currentClouds) {
-      cloud.pos.x = toFixed1(cloud.pos.x+cloud.vec.x);
-      cloud.pos.y = toFixed1(cloud.pos.y+cloud.vec.y);
-      
+  for (let cloud of cloudsState.currentClouds) {      
       const intersects = intersectsWith.has(cloud.id)
-      // затемнение облака если пересечение с курсором
-      if(intersects && cloud.id == intersectsWith.keys().next().value) {
-        ctx.save() // https://stackoverflow.com/a/18955967/14889638
-        ctx.filter = 'brightness(75%)'
+
+      if(!!cursorState.grabs) {
+        if(intersects && cloud.id === cursorState.grabs.id) {
+          ctx.save() // https://stackoverflow.com/a/18955967/14889638
+          ctx.filter = 'brightness(75%)'
+          cursorState.hoverOver = hoverOver
+        }
+      } else {
+        // затемнение облака если пересечение с курсором
+        if(intersects && cloud.id == intersectsWith.keys().next().value) {
+          ctx.save() // https://stackoverflow.com/a/18955967/14889638
+          ctx.filter = 'brightness(85%)'
+          cursorState.hoverOver = hoverOver
+        }
       }
+
       // рендер облака
       const image = await memoizeLoadImage(CLOUDS_PATH+cloud.variant)
-      ctx.drawImage(image,cloud.pos.x, cloud.pos.y, cloud.size.w, cloud.size.h)
+
+      if(!!cursorState.grabs && cursorState.grabs.id === cloud.id) {
+        // рендер где курсор находится
+        const newCloudX = cursorState.x-cursorState.grabs.localGrabX
+        const newCloudY = cursorState.y-cursorState.grabs.localGrabY
+
+        cloud.pos.x = newCloudX
+        cloud.pos.y = newCloudY
+        
+
+        ctx.drawImage(image,newCloudX, newCloudY, cloud.size.w, cloud.size.h)
+      } else{
+        cloud.pos.x = toFixed1(cloud.pos.x+cloud.vec.x);
+        cloud.pos.y = toFixed1(cloud.pos.y+cloud.vec.y);
+        // рендер дефолт
+        ctx.drawImage(image,cloud.pos.x, cloud.pos.y, cloud.size.w, cloud.size.h)
+      }
+
       // ctx.fillRect(cloud.pos.x, cloud.pos.y, cloud.size.w, cloud.size.h);
       if(intersects) ctx.restore()
 
@@ -169,4 +193,28 @@ export function getEnumKeysCached<T extends object>(enumObj: T): (keyof T)[] {
 
 export async function cacheClouds() {
   return Promise.all(getEnumKeysCached(CLOUDS_NAMES).map(cln => memoizeLoadImage(CLOUDS_PATH+cln)))
+}
+
+export function grabCloud() {
+if(cursorState.hoverOver !== null){
+            const cloud = cloudsState.currentClouds.find(cl => cl.id===cursorState.hoverOver)
+            if(!cloud) {
+              if(debugState.active) console.log('при захвате облака произошла ошибка: облако не найдено, лол');
+              return
+            }
+            cursorState.grabs = { localGrabX: toFixed1(cursorState.x-cloud.pos.x), localGrabY: toFixed1(cursorState.y-cloud.pos.y), id: cloud.id }
+            cloud.vec = { x: 0, y: 0 }
+            if(debugState.active) console.log(cursorState.grabs)
+        }
+}
+
+export function releaseCloud() {
+  let cloud = cloudsState.currentClouds.find(cl => cl.id == cursorState.grabs?.id)
+  if(!cloud) {
+    if(debugState.active) console.log('перетаскиваемое облако не найдено, оно станет статичным')
+    return
+  }
+  
+  assignWindToCloud(cloud)
+  cursorState.grabs = null
 }
