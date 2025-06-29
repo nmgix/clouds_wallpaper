@@ -28,11 +28,13 @@ import { getRandomFactor, memoize, toFixed1 } from "../helper/funcs";
 import { canvas, debugState } from "../main";
 import { cursorIntersects as cursorIntersectsCheck, CursorState, cursorState } from "./cursor";
 import { assignWindToCloud, Wind } from "./wind";
-export async function generateCloud(wind: Wind, generateAtScreen = false): Promise<Cloud> {
+export async function generateCloud(wind: Wind, generateAtScreen = false): Promise<Cloud | void> {
   
   // https://stackoverflow.com/a/23976260/14889638
   const variant = CLOUDS_NAMES[getEnumKeysCached(CLOUDS_NAMES).length*Math.random()|0]
-  const image = await memoizeLoadImage(CLOUDS_PATH+variant)
+  try {
+    const image = await memoizeLoadImage(CLOUDS_PATH+variant)
+    if(!image) return console.log('ошибка при создании облака: не загрузилось избражение')
   
   // const randomWidth = Math.min(Math.max(Math.random()*300, 50), 300);
   // const randomHeight = Math.min(Math.max(Math.random()*150, 50), 200);
@@ -50,6 +52,9 @@ export async function generateCloud(wind: Wind, generateAtScreen = false): Promi
     zIndex: zIdx,
     variant
   };
+  } catch (error) {
+    console.log(error)
+  }
 }
 export async function addClouds(cloudAmount: number, wind: Wind, generateAtScreen = false) {
   return Promise.all(Array(cloudAmount).fill(null).map(()=> generateCloud(wind, generateAtScreen)))
@@ -59,8 +64,8 @@ const loadImage = (src : string) : Promise<HTMLImageElement> => {
   if(debugState.active) console.log(`loading ${src}`)
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.addEventListener('load', () => resolve(image));
-    image.addEventListener('error', reject);
+    image.addEventListener('load', () => { console.log(`loaded: ${src}`); resolve(image) });
+    image.addEventListener('error', (err) => { console.log(`didnt load ${src}`); console.log(err); reject(err) });
     image.src = src;
   })
 }
@@ -144,6 +149,7 @@ export async function renderClouds(ctx: CanvasRenderingContext2D) {
 
       // рендер облака
       const image = await memoizeLoadImage(CLOUDS_PATH+cloud.variant)
+      if(!image) return console.log('error rendering image')
 
       if(!!cursorState.grabs && cursorState.grabs.id === cloud.id) {
         // рендер где курсор находится

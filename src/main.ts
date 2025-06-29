@@ -41,7 +41,7 @@ if(debugState.active==true && !!windspeed_controller) {
 }
 
 // render loop
-import { addClouds, cacheClouds, cloudsState, renderClouds } from "./objects/clouds";
+import { addClouds, cacheClouds, Cloud, cloudsState, renderClouds } from "./objects/clouds";
 // import { renderCursor } from "./objects/cursor";
 function renderLoop() {
   if (!canvas) throw new Error("Canvas not found");
@@ -61,7 +61,13 @@ function renderLoop() {
 import { MAX_CLOUDS } from "./helper/consts";
 (async() => {
   cacheClouds()
-  cloudsState.currentClouds =await addClouds(20, wind, true);
+  try {
+    const clouds = await addClouds(20, wind, true);
+    cloudsState.currentClouds = clouds.filter(el => !!el) as unknown as Cloud[]
+  } catch (error) {
+    console.log(error)
+  }
+  
   wind.vec = { x: 2, y: 0 };
   renderLoop();
 })()
@@ -73,7 +79,13 @@ setInterval(async () => {
     if(newClouds.length == 0 && limitedAmount == 0) limitedAmount = 5
     // console.log(MAX_CLOUDS - randomCloudsAmount - newClouds.length)
     // console.log('prevNewClouds:'+newClouds.length)
-    newClouds = newClouds.concat(await addClouds(limitedAmount, wind, false))
+    try {
+      const generatedClouds = await addClouds(limitedAmount, wind, false)
+      console.log({generatedClouds})
+      newClouds = newClouds.concat(generatedClouds as unknown as Cloud[])
+    } catch (error) {
+      console.log(error)
+    }
     // console.log('newClouds:'+newClouds.length)
   }
   cloudsState.currentClouds = newClouds
@@ -81,7 +93,7 @@ setInterval(async () => {
 // abortController.abort("enough")
 // setTimeout(() => {
 //   abortController.abort("enough");
-// }, 10000);
+// }, 1000);
 
 // setInterval(() => {
 //   wind.vec = { x: wind.vec.x, y: toFixed1(Math.max(Math.random()*4-2, -2)) }

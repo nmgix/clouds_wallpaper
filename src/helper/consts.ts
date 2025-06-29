@@ -1,6 +1,6 @@
 export const MAX_CLOUDS = 30
 
-export const CLOUDS_PATH="/Cloudy-Pack-Free/_Sunny Clouds/Dithered/"
+export const CLOUDS_PATH="./Cloudy-Pack-Free/_Sunny Clouds/Dithered/"
 export enum CLOUDS_NAMES {
     "Cloud-2.png",
     "Cloud-5.png",
